@@ -1,10 +1,12 @@
-## 合约地址：
+## 合约地址(Polygon Mumbai testnet)：
 WOOL_ADDRESS = “0x283dCAF71E12DdfB1d0b7dD94c96fA4ade4f20Af”  
 TRAITS_ADDRESS = “0xc36Ec42143872EbC654f3F9436a7850C209DD65d”  
 WOOLF_ADDRESS = “0x2C054f03d0Bcf5a3Ef15dCEAa90C1BF655cF9E53”  
 BARN_ADDRESS = “0x9a9CD3cE43FB112e1141a9f41A236f6974aaa45b”  
 
 ## 发布流程
+
+不同网络合约代码可以通用，ETH, MATIC, FTM已测试，不过FTM的testnet没找到可以查看nft数据的地方，建议使用MATIC
 
 建议使用remix操作，发布成功后马上去scan上面验证源码，期间不要改动代码，否则需要重新发布
 
@@ -17,6 +19,8 @@ BARN_ADDRESS = “0x9a9CD3cE43FB112e1141a9f41A236f6974aaa45b”
 4. 使用脚本上传Traits数据到Traits合约，并更新Traits合约里面的WOOLF_ADDRESS
 
 5. 更新Woolf合约里面的BARN_ADDRESS
+
+6. 打开在WOOL合约，找到write contract里面的add controller, 输入BARN_ADDRESS
 
 ## 操作流程
 
