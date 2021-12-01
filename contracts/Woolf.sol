@@ -29,7 +29,7 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
   mapping(uint256 => uint256) public existingCombinations;
 
   mapping(uint8 => uint8) public alphaScore;
-  uint8 public assignScore = 0;
+  uint8 public assignScore;
 
   // list of probabilities for each trait type
   // 0 - 9 are associated with Sheep, 10 - 18 are associated with Wolves
@@ -53,6 +53,7 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
     traits = ITraits(_traits);
     MAX_TOKENS = _maxTokens;
     PAID_TOKENS = _maxTokens / 5;
+    assignScore = 0;
 
     // I know this looks weird but it saves users gas by making lookup O(1)
     // A.J. Walker's Alias Algorithm
@@ -214,10 +215,10 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
    * @return the ID of the randomly selected trait
    */
   function selectTrait(uint16 seed, uint8 traitType) internal view returns (uint8) {
-    uint8 trait = uint8(seed) % uint8(rarities[traitType].length);
-    if(assignScore > 0) {
+    if(traitType == 17 && assignScore > 0) {
       return alphaScore[assignScore];
     } else {
+      uint8 trait = uint8(seed) % uint8(rarities[traitType].length);
       if (seed >> 8 < rarities[traitType][trait]) return trait;
       return aliases[traitType][trait];
     }
