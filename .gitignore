@@ -3,3 +3,5 @@ package-lock.json
 .env
 cache/
 .DS_Store
+artifacts/
+contracts/artifacts/
