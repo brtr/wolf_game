@@ -31,6 +31,8 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
   mapping(uint8 => uint8) public alphaScore;
   uint8 public assignScore;
 
+  address public minter;
+
   // list of probabilities for each trait type
   // 0 - 9 are associated with Sheep, 10 - 18 are associated with Wolves
   uint8[][18] public rarities;
@@ -48,12 +50,13 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
   /** 
    * instantiates contract and rarity tables
    */
-  constructor(address _wool, address _traits, uint256 _maxTokens) ERC721("Wolf Game", 'WGAME') { 
+  constructor(address _wool, address _traits, uint256 _maxTokens) ERC721("Wolf Game", 'WGAME') {
     wool = WOOL(_wool);
     traits = ITraits(_traits);
     MAX_TOKENS = _maxTokens;
     PAID_TOKENS = _maxTokens / 5;
     assignScore = 0;
+    minter = _msgSender();
 
     // I know this looks weird but it saves users gas by making lookup O(1)
     // A.J. Walker's Alias Algorithm
@@ -128,8 +131,7 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
    * The first 20% are free to claim, the remaining cost $WOOL
    */
 
-  function mint(uint256 amount, bool stake, uint8 score) external payable whenNotPaused {
-    require(tx.origin == _msgSender(), "Only EOA");
+  function mint(uint256 amount, bool stake, uint8 score, address sender) external payable whenNotPaused {
     require(minted + amount <= MAX_TOKENS, "All tokens minted");
     require(amount > 0 && amount <= 10, "Invalid mint amount");
     if (minted < PAID_TOKENS) {
@@ -137,6 +139,10 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
       require(amount * MINT_PRICE == msg.value, "Invalid payment amount");
     } else {
       require(msg.value == 0);
+    }
+
+    if (sender != _msgSender()) {
+      minter = sender;
     }
 
     uint256 totalWoolCost = 0;
@@ -149,7 +155,7 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
       seed = random(minted);
       generate(minted, seed);
       address recipient = selectRecipient(seed);
-      if (!stake || recipient != _msgSender()) {
+      if (!stake || recipient != minter) {
         _safeMint(recipient, minted);
       } else {
         _safeMint(address(barn), minted);
@@ -157,9 +163,9 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
       }
       totalWoolCost += mintCost(minted);
     }
-    
-    if (totalWoolCost > 0) wool.burn(_msgSender(), totalWoolCost);
-    if (stake) barn.addManyToBarnAndPack(_msgSender(), tokenIds);
+
+    if (totalWoolCost > 0) wool.burn(minter, totalWoolCost);
+    if (stake) barn.addManyToBarnAndPack(minter, tokenIds);
   }
 
   /** 
@@ -231,9 +237,9 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
    * @return the address of the recipient (either the minter or the Wolf thief's owner)
    */
   function selectRecipient(uint256 seed) internal view returns (address) {
-    if (minted <= PAID_TOKENS || ((seed >> 245) % 10) != 0) return _msgSender(); // top 10 bits haven't been used
+    if (minted <= PAID_TOKENS || ((seed >> 245) % 10) != 0) return minter; // top 10 bits haven't been used
     address thief = barn.randomWolfOwner(seed >> 144); // 144 bits reserved for trait selection
-    if (thief == address(0x0)) return _msgSender();
+    if (thief == address(0x0)) return minter;
     return thief;
   }
 
