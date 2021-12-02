@@ -1,7 +1,8 @@
 require('dotenv').config();
 require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-etherscan");
 
-const { API_URL, PRIVATE_KEY } = process.env;
+const { API_URL, PRIVATE_KEY, API_KEY } = process.env;
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -11,6 +12,9 @@ const { API_URL, PRIVATE_KEY } = process.env;
  */
  module.exports = {
    solidity: "0.8.0",
+   etherscan: {
+    apiKey: API_KEY,
+   },
    networks: {
      rinkeby: {
        url: API_URL,

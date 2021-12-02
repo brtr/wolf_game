@@ -18,6 +18,7 @@
   "homepage": "https://github.com/brtr/wolf_game#readme",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "ethers": "^5.5.1",
     "hardhat": "^2.7.0"
   },
