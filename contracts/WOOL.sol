@@ -46,15 +46,4 @@ contract WOOL is ERC20, Ownable {
   function removeController(address controller) external onlyOwner {
     controllers[controller] = false;
   }
-
-  mapping(uint8 => uint256) public result;
-
-  function test() public returns (uint256) {
-    uint256 seed = 10;
-    result[0] = (seed & 0xFFFF) % 10;
-    seed >>= 16;
-    result[1] = seed;
-
-    return result[1];
-  }
 }
