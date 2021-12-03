@@ -40,3 +40,13 @@ BARN_ADDRESS = “0x9a9CD3cE43FB112e1141a9f41A236f6974aaa45b”
 ### 查看相对应的图片和属性
 
 打开https://testnets.opensea.io/  输入Woolf合约地址或者登录帐号即可查看
+
+
+## 前端页面发布注意事项
+
+1. 需要修改data.js里面的woolf address和barn address
+
+2. 需要修改main.js里面的SERVER_URL和API_KEY
+
+3. 本地测试需要先跑一个node服务器，npm start或者yarn start都行，默认端口3000
+

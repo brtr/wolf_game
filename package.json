@@ -1,21 +1,11 @@
 {
   "name": "wolf_game",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "./src/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/brtr/wolf_game.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/brtr/wolf_game/issues"
-  },
-  "homepage": "https://github.com/brtr/wolf_game#readme",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
@@ -26,6 +16,6 @@
     "@openzeppelin/contracts": "^4.3.3",
     "@remix-project/remixd": "^0.5.2",
     "chokidar": "^3.5.2",
-    "dotenv": "^10.0.0"
+    "serve-handler": "^6.1.3"
   }
 }
