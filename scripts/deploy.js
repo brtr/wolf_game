@@ -19,12 +19,12 @@ const main = async () => {
   contractFactory = await hre.ethers.getContractFactory('Woolf');
   const woolfContract = await contractFactory.deploy(woolContract.address, traitContract.address, 1000000);
   await woolfContract.deployed();
-  console.log("Woolf Contract deployed to:", woolContract.address);
+  console.log("Woolf Contract deployed to:", woolfContract.address);
 
   contractFactory = await hre.ethers.getContractFactory('Barn');
   const barnContract = await contractFactory.deploy(woolfContract.address, woolContract.address);
   await barnContract.deployed();
-  console.log("Barn Contract deployed to:", woolContract.address);
+  console.log("Barn Contract deployed to:", barnContract.address);
 
   await traitContract.setWoolf(woolfContract.address);
   console.log("set woolf success");
