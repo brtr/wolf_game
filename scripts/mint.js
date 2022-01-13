@@ -1,15 +1,11 @@
 const hre = require("hardhat");
-const traits = require("../data.json");
+const { WOOLF_ADDRESS, OWNER_ADDRESS } = process.env;
 
 async function main() {
-  const NFT = await hre.ethers.getContractFactory("Traits");
-  const { TRAITS_ADDRESS } = process.env;
-  const contract = NFT.attach(TRAITS_ADDRESS);
-  // for (const trait of traits) {
-  //   const traitIds = [...Array(trait.data.length).keys()];
-  //   await contract.uploadTraits(trait.id, traitIds, trait.data);
-  // }  // add data to traits
-  await contract.uploadTraits(1, [1], traits[1].data);
+  const NFT = await hre.ethers.getContractFactory("Woolf");
+  const contract = NFT.attach(WOOLF_ADDRESS);
+  const price = "0.001"
+  console.log(await contract.mint(1, true, 0, OWNER_ADDRESS, {value: ethers.utils.parseUnits(price, 'ether')}));
 }
 main().then(() => process.exit(0)).catch(error => {
   console.error(error);

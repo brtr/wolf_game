@@ -17,7 +17,7 @@ const main = async () => {
   console.log("Wool Contract deployed to:", woolContract.address);
 
   contractFactory = await hre.ethers.getContractFactory('Woolf');
-  const woolfContract = await contractFactory.deploy(woolContract.address, traitContract.address, 1000000);
+  const woolfContract = await contractFactory.deploy(woolContract.address, traitContract.address, 100);
   await woolfContract.deployed();
   console.log("Woolf Contract deployed to:", woolfContract.address);
 
@@ -30,6 +30,7 @@ const main = async () => {
   console.log("set woolf success");
   await woolfContract.setBarn(barnContract.address);
   console.log("set barn for woolf success");
+  await woolContract.addController(woolfContract.address);
   await woolContract.addController(barnContract.address);
   console.log("set barn for wool success");
 };
