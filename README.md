@@ -50,3 +50,18 @@ BARN_ADDRESS = “0x9a9CD3cE43FB112e1141a9f41A236f6974aaa45b”
 
 3. 本地测试需要先跑一个node服务器，npm start或者yarn start都行，默认端口3000
 
+
+## 发布
+
+1. npx hardhat run scripts/deploy.js --network rinkeby
+
+2. npx hardhat verify --network rinkeby 合约地址
+
+## 注意事项
+
+1. 需要在wool的合约里通过addController将woolf合约给加进去，否则无法在woolf合约里通过wool去mint
+
+2. 在wool里mint 羊毛，需要先将钱包地址通过addController加进去，然后mint 羊毛(注意要加18个0)
+
+3. 在woolf合约里通过setPaidTokens设置， 比如设置为2， 则代表mint2个之后，就可以使用羊毛去mint
+
