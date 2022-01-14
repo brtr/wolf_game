@@ -8,7 +8,8 @@ import "./Woolf.sol";
 import "./WOOL.sol";
 
 contract Barn is Ownable, IERC721Receiver, Pausable {
-  
+  event AddManyToBarnAndPack(address account, uint16[] tokenIds);
+  event ClaimManyFromBarnAndPack(uint16[] tokenIds, bool unstake);
   // maximum alpha score for a Wolf
   uint8 public constant MAX_ALPHA = 8;
 
@@ -86,11 +87,15 @@ contract Barn is Ownable, IERC721Receiver, Pausable {
         continue; // there may be gaps in the array for stolen tokens
       }
 
-      if (isSheep(tokenIds[i])) 
+      if (isSheep(tokenIds[i]))
         _addSheepToBarn(account, tokenIds[i]);
-      else 
+      else
         _addWolfToPack(account, tokenIds[i]);
+
+      woolf.setOwnerToken(account, tokenIds[i], true);
     }
+
+    emit AddManyToBarnAndPack(account, tokenIds);
   }
 
   /**
@@ -140,9 +145,13 @@ contract Barn is Ownable, IERC721Receiver, Pausable {
         owed += _claimSheepFromBarn(tokenIds[i], unstake);
       else
         owed += _claimWolfFromPack(tokenIds[i], unstake);
+
+        woolf.setOwnerToken(_msgSender(), tokenIds[i], !unstake);
     }
     if (owed == 0) return;
     wool.mint(_msgSender(), owed);
+
+    emit ClaimManyFromBarnAndPack(tokenIds, unstake);
   }
 
   /**

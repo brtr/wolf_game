@@ -12,6 +12,7 @@ import "./WOOL.sol";
 
 
 contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
+  event Mint(uint256 amount, bool stake, uint8 score, address sender);
 
   // mint price
   uint256 public constant MINT_PRICE = .001 ether;
@@ -29,6 +30,13 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
   mapping(uint256 => uint256) public existingCombinations;
 
   mapping(uint8 => uint8) public alphaScore;
+
+  struct Wallet {
+    uint256 tokenId;
+    bool isSheep;
+    bool isStaked;
+  }
+  mapping(address => Wallet[]) public ownerTokens;
   uint8 public assignScore;
 
   address public minter;
@@ -158,11 +166,38 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
         _safeMint(address(barn), minted);
         tokenIds[i] = minted;
       }
+
+      ownerTokens[_msgSender()].push(Wallet(minted, selectTraits(seed).isSheep, stake));
       totalWoolCost += mintCost(minted);
     }
 
     if (totalWoolCost > 0) wool.burn(minter, totalWoolCost);
     if (stake) barn.addManyToBarnAndPack(minter, tokenIds);
+
+    emit Mint(amount, stake, score, sender);
+  }
+
+  function setOwnerToken(address owner, uint256 tokenId, bool stake) public {
+    require(owner == _msgSender() || _msgSender() == address(barn), "DONT GIVE YOUR TOKENS AWAY");
+    Wallet[] storage tokens = ownerTokens[owner];
+    for (uint i=0; i<tokens.length; i++) {
+      if (tokens[i].tokenId == tokenId) {
+        tokens[i].isStaked = stake;
+        break;
+      }
+    }
+  }
+
+  function removeOwnerToken(address owner, uint256 tokenId) private {
+    require(owner == _msgSender() || _msgSender() == address(barn), "DONT GIVE YOUR TOKENS AWAY");
+    Wallet[] memory tokens = ownerTokens[owner];
+    delete ownerTokens[owner];
+
+    for (uint i=0; i<tokens.length; i++) {
+      if (tokens[i].tokenId != tokenId) {
+        ownerTokens[owner].push(tokens[i]);
+      }
+    }
   }
 
   /** 
@@ -186,8 +221,11 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
     uint256 tokenId
   ) public virtual override {
     // Hardcode the Barn's approval so that users don't have to waste gas approving
-    if (_msgSender() != address(barn))
+    if (_msgSender() != address(barn)) {
+      removeOwnerToken(from, tokenId);
       require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: transfer caller is not owner nor approved");
+    }
+
     _transfer(from, to, tokenId);
   }
 
@@ -350,5 +388,9 @@ contract Woolf is IWoolf, ERC721Enumerable, Ownable, Pausable {
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
     return traits.tokenURI(tokenId);
+  }
+
+  function getOwnerTokens(address _address) public view returns (Wallet[] memory) {
+    return ownerTokens[_address];
   }
 }

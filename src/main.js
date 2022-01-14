@@ -1,188 +1,301 @@
-import { WoolfAddress, WoolfABI, BarnAddress, BarnABI } from "./data.js";
+import { WoolfAddress, WoolfABI, BarnAddress, BarnABI, WoolAddress, WoolABI } from "./data.js";
 
 (function() {
-  let loginAddress;
-  const SERVER_URL = "";
-  const API_KEY = "";
-  Moralis.initialize(API_KEY);
-  Moralis.serverURL = SERVER_URL;
+  let loginAddress = localStorage.getItem("loginAddress");
+  let mintAmount = 1;
+  let unstakedTokens = [];
+  let barnTokens = [];
+  let wolfPackTokens = [];
+  let targetIds = [];
+  let targetType = "unstake";
+  let currentPrice, minted, mintCost, totalCost, balance;
+  const TargetChain = {
+    id: "4",
+    name: "rinkeby"
+  };
 
-  const loginButton = document.getElementById('btn-login');
-  const logoutButton = document.getElementById('btn-logout');
-  const address = document.getElementById('address');
-  const mintButton = document.getElementById('btn-mint');
-  const stakeButton = document.getElementById('btn-stake');
-  const unstakeButton = document.getElementById('btn-unstake');
-  const claimButton = document.getElementById('btn-claim');
+  const provider = new ethers.providers.Web3Provider(web3.currentProvider);
+  const signer = provider.getSigner();
+  const WoolContract = new ethers.Contract(WoolAddress, WoolABI, provider);
+  const WoolfContract = new ethers.Contract(WoolfAddress, WoolfABI, provider);
+  const BarnContract = new ethers.Contract(BarnAddress, BarnABI, provider);
 
-  const toggleLoader = function() {
-    const x = document.getElementById('loader');
-    if (x.style.display === "none") {
-      x.style.display = "block";
-    } else {
-      x.style.display = "none";
-    }
+  const reset = function() {
+    unstakedTokens = [];
+    barnTokens = [];
+    wolfPackTokens = [];
+
+    targetType = "unstake";
+    targetIds = [];
+    $(".tokenIcons").remove();
+
+    mintAmount = 1;
+    $("#mintAmount").text(mintAmount);
+    getTotalCost();
   }
 
-  const toggleLoginBtns = function() {
+  const toggleBlock = function() {
     if (loginAddress == null) {
-      loginButton.style.display = "block"
-      logoutButton.style.display = "none"
-      address.style.display = "none"
+      $(".connected").hide();
+      $(".unconnected").show();
     } else {
-      loginButton.style.display = "none"
-      logoutButton.style.display = "block"
-
-      address.textContent = loginAddress;
-      address.style.display = "block"
+      $(".connected").show();
+      $(".unconnected").hide();
     }
-  }
-
-  const login = function() {
-    Moralis.authenticate()
-    .then(function (user) {
-      loginAddress = user.get("ethAddress");
-      toggleLoader();
-      toggleLoginBtns();
-      console.log(loginAddress);
-    })
-    .catch(function (error) {
-      toggleLoader();
-      toggleLoginBtns();
-      console.log('Error: ', error);
-    });
   }
 
   // Check if user is logged in
-  const checkUserLogin = function() {
-    Moralis.User.currentAsync()
-      .then(function(user) {
-        if (!user) {
-          alert("You need login first");
-          toggleLoader();
-          login();
-        }
-      })
-      .catch(function (error) {
-        console.log('Error: ', error);
-      });
-  }
-
-  const writeFunc = function(options) {
-    checkUserLogin();
-    console.log("options: ", options);
-    Moralis.executeFunction(options).then(function() {
-      toggleLoader();
-      alert('Success')
-    }).catch(function (error) {
-      toggleLoader();
-      console.log('Error: ', error);
-    });
-  }
-
-  // Check if user change account
-  const checkUser = function() {
-    Moralis.onAccountsChanged(function(accounts) {
-      loginAddress = accounts[0];
-      Moralis.enableWeb3();
-      toggleLoginBtns()
-      console.log("Account changed: ", loginAddress);
-    });
-
-    const user = Moralis.User.current();
-    Moralis.enableWeb3(); if (user);
-    loginAddress = user ? user.get("ethAddress") : null;
-    toggleLoginBtns()
-    toggleLoader();
-    console.log("Account changed: ", loginAddress);
-  };
-
-  checkUser();
-
-  loginButton.addEventListener('click', function () {
-    toggleLoader();
-    login();
-  })
-
-  logoutButton.addEventListener('click', function () {
-    toggleLoader();
-    Moralis.User.logOut()
-      .then(function () {
+  const checkLogin = async function() {
+    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+    if (accounts.length > 0) {
+        localStorage.setItem("loginAddress", accounts[0]);
+        loginAddress = accounts[0];
+    } else {
+        localStorage.removeItem("loginAddress");
         loginAddress = null;
-        toggleLoader();
-        toggleLoginBtns();
-      })
-      .catch(function (error) {
-        toggleLoader();
-        console.log('Error: ', error);
-      });
-  })
+    }
+    toggleBlock();
+  }
 
-  mintButton.addEventListener('click', function () {
-    toggleLoader();
-    const amount = document.getElementById("mintCount").value;
-    const totalPrice = 0.001 * amount;
-    const options = {
-      contractAddress: WoolfAddress,
-      functionName: "mint",
-      abi: WoolfABI,
-      msgValue: Moralis.Units.ETH(totalPrice),
-      params: {
-        amount: amount,
-        stake: "true",
-        score: "0",
-        sender: loginAddress
+  const getInfo = async function() {
+    reset();
+    const maxToken = await WoolfContract.MAX_TOKENS();
+    $("#totalSupply").text(maxToken);
+
+    if (loginAddress) {
+      balance = await WoolContract.balanceOf(loginAddress);
+      balance = parseFloat(ethers.utils.formatEther(balance))
+      $("#woolBalance").text(balance);
+
+      const tokens = await WoolfContract.getOwnerTokens(loginAddress);
+      console.log("all tokens, ", tokens);
+      splitTokens(tokens);
+      console.log("unstake tokens, ", unstakedTokens);
+    }
+    minted = await WoolfContract.minted();
+    if (minted > 0) {
+      $("#minted").text(minted);
+    }
+
+    currentPrice = await WoolfContract.MINT_PRICE();
+    currentPrice = parseFloat(ethers.utils.formatEther(currentPrice));
+    console.log("current price is ", currentPrice);
+    mintCost = await WoolfContract.mintCost(minted + 1);
+    mintCost = parseFloat(ethers.utils.formatEther(mintCost));
+    console.log("mint cost is ", mintCost);
+
+    if (mintCost > 0) {
+      $("#mintCost").text(mintCost);
+      $(".mintCostToken").text("WOOL");
+      if (balance > mintCost) {
+        $("#mintBtnBlock").show();
+        $("#totalCostBlock").show();
+        $("#insufficientBalance").hide();
+      } else {
+        $("#mintBtnBlock").hide();
+        $("#totalCostBlock").hide();
+        $("#insufficientBalance").show();
+      }
+    } else {
+      $("#mintCost").text(currentPrice);
+      $(".mintCostToken").text("ETH");
+      $("#mintBtnBlock").show();
+      $("#totalCostBlock").show();
+      $("#insufficientBalance").hide();
+    }
+
+    const mintPercent = parseFloat(minted / maxToken).toFixed(3) * 100;
+    $("#mintedPercent").css("width", mintPercent.toString() + "%");
+
+    getTotalCost();
+    $("#loading").hide();
+
+    toggleStakeBtns();
+  }
+
+  const getTotalCost = async function() {
+    console.log("mint amount is ", mintAmount);
+    const price = mintCost > 0 ? mintCost : currentPrice;
+    totalCost = price * mintAmount;
+    $("#totalCost").text(totalCost.toLocaleString());
+  }
+
+  const splitTokens = function(tokens) {
+    for (var i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.isStaked) {
+        if (token.isSheep) {
+          $.inArray(token, barnTokens) == -1 && barnTokens.push(token);
+        } else {
+          $.inArray(token, wolfPackTokens) == -1 && wolfPackTokens.push(token);
+        }
+      } else {
+        $.inArray(token, unstakedTokens) == -1 && unstakedTokens.push(token);
       }
     }
 
-    writeFunc(options);
-  });
+    addTokenIcons(barnTokens, "barn");
+    toggleTokenBlock(barnTokens, $(".hasBarnToken"), $(".noBarnToken"));
+    addTokenIcons(wolfPackTokens, "wolfPack");
+    toggleTokenBlock(wolfPackTokens, $(".hasWolfPackToken"), $(".noWolfPackToken"));
+    addTokenIcons(unstakedTokens, "unstake");
+    toggleTokenBlock(unstakedTokens, $(".hasUnstakeToken"), $(".noUnstakedToken"));
+  }
 
-  stakeButton.addEventListener('click', function() {
-    toggleLoader();
-    const tokenId = document.getElementById("stakeTokenId").value;
-    const options = {
-      contractAddress: BarnAddress,
-      functionName: "addManyToBarnAndPack",
-      abi: BarnABI,
-      params: {
-        account: loginAddress,
-        tokenIds: [tokenId]
+  const toggleTokenBlock = function(arr, $posBlock, $negBlock) {
+    if (arr.length > 0) {
+      $posBlock.show();
+      $negBlock.hide();
+    } else {
+      $posBlock.hide();
+      $negBlock.show();
+    }
+  }
+
+  const addTokenIcons = function(arr, t_type) {
+    let $block;
+    if (t_type == "unstake") {
+      $block = $(".hasUnstakeToken .tokens");
+    } else if (t_type == "barn") {
+      $block = $(".hasBarnToken");
+    } else {
+      $block = $(".hasWolfpackToken");
+    }
+    if (arr.length > 0) {
+      for (var i = 0; i < arr.length; i++) {
+        const isSheep = arr[i].isSheep;
+        const imgPath = isSheep ? "./public/images/sheep.svg" : "./public/images/wolf.svg";
+        $block.append("<img src=" + imgPath + " class='tokenIcons' data-id='" + arr[i].tokenId + "' data-type='" + t_type + "' />");
       }
     }
+  }
 
-    writeFunc(options);
-  });
+  const mint = async function(stake) {
+    const price = mintCost > 0 ? 0 : totalCost;
+    const woolfWithSigner = WoolfContract.connect(signer);
+    const tx = await woolfWithSigner.mint(mintAmount, stake, 0, loginAddress, {value: ethers.utils.parseUnits(price.toString(), "ether")});
+    console.log("sending tx, ", tx);
+    $("#loading").show();
+    await tx.wait();
+    console.log("received tx ", tx);
+    getInfo();
+  }
 
-  unstakeButton.addEventListener('click', function() {
-    toggleLoader();
-    const tokenId = document.getElementById("unstakeTokenId").value;
-    const options = {
-      contractAddress: BarnAddress,
-      functionName: "claimManyFromBarnAndPack",
-      abi: BarnABI,
-      params: {
-        unstake: "true",
-        tokenIds: [tokenId]
-      }
+  const claim = async function(stake) {
+    const barnWithSigner = BarnContract.connect(signer);
+    const tx = await barnWithSigner.claimManyFromBarnAndPack(targetIds, stake);
+    console.log("sending tx, ", tx);
+    $("#loading").show();
+    await tx.wait();
+    console.log("received tx ", tx);
+    getInfo();
+  }
+
+  const stake = async function() {
+    const barnWithSigner = BarnContract.connect(signer);
+    const tx = await barnWithSigner.addManyToBarnAndPack(loginAddress, targetIds);
+    console.log("sending tx, ", tx);
+    $("#loading").show();
+    await tx.wait();
+    console.log("received tx ", tx);
+    getInfo();
+  }
+
+  const toggleStakeBtns = function() {
+    if (targetType == "unstake") {
+      $("#stakeBtnBlock").hide();
+      $("#unstakeBtnBlock").show();
+    } else {
+      $("#stakeBtnBlock").show();
+      $("#unstakeBtnBlock").hide();
     }
+  }
 
-    writeFunc(options);
-  })
+  if (window.ethereum) {
+    $(".connectBtn").click(checkLogin, false);
 
-  claimButton.addEventListener('click', function() {
-    toggleLoader();
-    const tokenId = document.getElementById("claimTokenId").value;
-    const options = {
-      contractAddress: BarnAddress,
-      functionName: "claimManyFromBarnAndPack",
-      abi: BarnABI,
-      params: {
-        unstake: "false",
-        tokenIds: [tokenId]
+    toggleBlock();
+    getInfo()
+
+    $("#addBtn").click(function() {
+      if (mintAmount < 10) {
+        mintAmount = mintAmount + 1;
+        $("#mintAmount").text(mintAmount);
+        getTotalCost();
       }
-    }
+    })
 
-    writeFunc(options);
-  })
+    $("#subBtn").click(function() {
+      if (mintAmount > 1) {
+        mintAmount = mintAmount - 1;
+        $("#mintAmount").text(mintAmount);
+        getTotalCost();
+      }
+    })
+
+    $("#mintBtn").click(function() {
+      mint(false);
+    })
+
+    $("#mintStakeBtn").click(function() {
+      mint(true);
+    })
+
+    $("#claimBtn").click(function() {
+      claim(false);
+    })
+
+    $("#unStakeBtn").click(function() {
+      claim(true);
+    })
+
+    $("#stakeBtn").click(function() {
+      stake();
+    })
+
+    $(document).on("click", ".tokenIcons", function() {
+      const tokenId = $(this).data("id");
+      if($(this).data("type") != targetType) {
+        targetIds = [];
+        $(".tokenIcons").removeClass("checked");
+      }
+      if($.inArray(tokenId, targetIds) == -1) {
+        targetIds.push(tokenId);
+        targetType = $(this).data("type");
+      } else {
+        targetIds = $.grep(targetIds, function (value) {
+          return value != tokenId;
+        });
+      }
+      $(this).toggleClass("checked", $.inArray(tokenId, targetIds));
+
+      toggleStakeBtns();
+      console.log("token ids ", targetIds);
+    })
+
+    // detect Metamask account change
+    ethereum.on('accountsChanged', function (accounts) {
+      console.log('accountsChanges',accounts);
+      if (accounts.length > 0) {
+        localStorage.setItem("loginAddress", accounts[0]);
+        loginAddress = accounts[0];
+      } else {
+        localStorage.removeItem("loginAddress");
+        loginAddress = null;
+      }
+      getInfo();
+      toggleBlock();
+    });
+
+    // detect Network account change
+    ethereum.on('chainChanged', function(networkId){
+      console.log('networkChanged',networkId);
+      if (networkId != parseInt(TargetChain.id)) {
+        alert("We don't support this chain, please switch to " + TargetChain.name);
+      }
+    });
+  } else {
+    console.warn("No web3 detected.");
+  }
+
 })();
