@@ -20,6 +20,20 @@ import { WoolfAddress, WoolfABI, BarnAddress, BarnABI, WoolAddress, WoolABI } fr
   const WoolfContract = new ethers.Contract(WoolfAddress, WoolfABI, provider);
   const BarnContract = new ethers.Contract(BarnAddress, BarnABI, provider);
 
+  function fetchErrMsg (err) {
+    const errMsg = err.error ? err.error.message : err.message;
+    alert('Error:  ' + errMsg.split(": ")[1]);
+    $("#loading").hide();
+  }
+
+  async function checkChainId () {
+    const { chainId } = await provider.getNetwork();
+    if (chainId != parseInt(TargetChain.id)) {
+      alert("We don't support this chain, please switch to " + TargetChain.name + " and refresh");
+      return;
+    }
+  }
+
   const reset = function() {
     unstakedTokens = [];
     barnTokens = [];
@@ -171,34 +185,46 @@ import { WoolfAddress, WoolfABI, BarnAddress, BarnABI, WoolAddress, WoolABI } fr
   }
 
   const mint = async function(stake) {
-    const price = mintCost > 0 ? 0 : totalCost;
-    const woolfWithSigner = WoolfContract.connect(signer);
-    const tx = await woolfWithSigner.mint(mintAmount, stake, 0, loginAddress, {value: ethers.utils.parseUnits(price.toString(), "ether")});
-    console.log("sending tx, ", tx);
-    $("#loading").show();
-    await tx.wait();
-    console.log("received tx ", tx);
-    getInfo();
+    try {
+      const price = mintCost > 0 ? 0 : totalCost;
+      const woolfWithSigner = WoolfContract.connect(signer);
+      const tx = await woolfWithSigner.mint(mintAmount, stake, 0, loginAddress, {value: ethers.utils.parseUnits(price.toString(), "ether")});
+      console.log("sending tx, ", tx);
+      $("#loading").show();
+      await tx.wait();
+      console.log("received tx ", tx);
+      getInfo();
+    } catch (err) {
+      fetchErrMsg(err);
+    }
   }
 
   const claim = async function(stake) {
-    const barnWithSigner = BarnContract.connect(signer);
-    const tx = await barnWithSigner.claimManyFromBarnAndPack(targetIds, stake);
-    console.log("sending tx, ", tx);
-    $("#loading").show();
-    await tx.wait();
-    console.log("received tx ", tx);
-    getInfo();
+    try {
+      const barnWithSigner = BarnContract.connect(signer);
+      const tx = await barnWithSigner.claimManyFromBarnAndPack(targetIds, stake);
+      console.log("sending tx, ", tx);
+      $("#loading").show();
+      await tx.wait();
+      console.log("received tx ", tx);
+      getInfo();
+    } catch (err) {
+      fetchErrMsg(err);
+    }
   }
 
   const stake = async function() {
-    const barnWithSigner = BarnContract.connect(signer);
-    const tx = await barnWithSigner.addManyToBarnAndPack(loginAddress, targetIds);
-    console.log("sending tx, ", tx);
-    $("#loading").show();
-    await tx.wait();
-    console.log("received tx ", tx);
-    getInfo();
+    try {
+      const barnWithSigner = BarnContract.connect(signer);
+      const tx = await barnWithSigner.addManyToBarnAndPack(loginAddress, targetIds);
+      console.log("sending tx, ", tx);
+      $("#loading").show();
+      await tx.wait();
+      console.log("received tx ", tx);
+      getInfo();
+    } catch (err) {
+      fetchErrMsg(err);
+    }
   }
 
   const toggleStakeBtns = function() {
@@ -214,6 +240,7 @@ import { WoolfAddress, WoolfABI, BarnAddress, BarnABI, WoolAddress, WoolABI } fr
   if (window.ethereum) {
     $(".connectBtn").click(checkLogin, false);
 
+    checkChainId();
     toggleBlock();
     getInfo()
 
@@ -291,7 +318,7 @@ import { WoolfAddress, WoolfABI, BarnAddress, BarnABI, WoolAddress, WoolABI } fr
     ethereum.on('chainChanged', function(networkId){
       console.log('networkChanged',networkId);
       if (networkId != parseInt(TargetChain.id)) {
-        alert("We don't support this chain, please switch to " + TargetChain.name);
+        alert("We don't support this chain, please switch to " + TargetChain.name + " and refresh");
       }
     });
   } else {
