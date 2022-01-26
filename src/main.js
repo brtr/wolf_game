@@ -10,8 +10,8 @@ import { WoolfAddress, WoolfABI, BarnAddress, BarnABI, WoolAddress, WoolABI } fr
   let targetType = "unstake";
   let currentPrice, minted, mintCost, totalCost, balance;
   const TargetChain = {
-    id: "4",
-    name: "rinkeby"
+    id: "5",
+    name: "goerli"
   };
 
   const provider = new ethers.providers.Web3Provider(web3.currentProvider);
@@ -186,44 +186,49 @@ import { WoolfAddress, WoolfABI, BarnAddress, BarnABI, WoolAddress, WoolABI } fr
 
   const mint = async function(stake) {
     try {
+      $("#loading").show();
       const price = mintCost > 0 ? 0 : totalCost;
       const woolfWithSigner = WoolfContract.connect(signer);
-      const tx = await woolfWithSigner.mint(mintAmount, stake, 0, loginAddress, {value: ethers.utils.parseUnits(price.toString(), "ether")});
+      let gasPrice = await provider.getGasPrice();
+      gasPrice = gasPrice.add(gasPrice.div(2));
+      const tx = await woolfWithSigner.mint(mintAmount, stake, 0, loginAddress, {gasPrice: gasPrice, value: ethers.utils.parseUnits(price.toString(), "ether")});
       console.log("sending tx, ", tx);
-      $("#loading").show();
       await tx.wait();
       console.log("received tx ", tx);
-      getInfo();
+      location.reload();
     } catch (err) {
       fetchErrMsg(err);
+      location.reload();
     }
   }
 
   const claim = async function(stake) {
     try {
+      $("#loading").show();
       const barnWithSigner = BarnContract.connect(signer);
       const tx = await barnWithSigner.claimManyFromBarnAndPack(targetIds, stake);
       console.log("sending tx, ", tx);
-      $("#loading").show();
       await tx.wait();
       console.log("received tx ", tx);
-      getInfo();
+      location.reload();
     } catch (err) {
       fetchErrMsg(err);
+      location.reload();
     }
   }
 
   const stake = async function() {
     try {
+      $("#loading").show();
       const barnWithSigner = BarnContract.connect(signer);
       const tx = await barnWithSigner.addManyToBarnAndPack(loginAddress, targetIds);
       console.log("sending tx, ", tx);
-      $("#loading").show();
       await tx.wait();
       console.log("received tx ", tx);
-      getInfo();
+      location.reload();
     } catch (err) {
       fetchErrMsg(err);
+      location.reload();
     }
   }
 
@@ -238,7 +243,9 @@ import { WoolfAddress, WoolfABI, BarnAddress, BarnABI, WoolAddress, WoolABI } fr
   }
 
   if (window.ethereum) {
-    $(".connectBtn").click(checkLogin, false);
+    $(".connectBtn").click(function() {
+      checkLogin();
+    });
 
     checkChainId();
     toggleBlock();
